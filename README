@@ -7,13 +7,16 @@ Image::Base - base class for loading, manipulating and saving images.
 This class should not be used directly. Known inheritors are Image::Xbm and
 Image::Xpm.
 
-An example of the generalised functionality that this class could provide is
-the C<new_from_image()> method (described later) which can be used to copy an
-image of one type to an image of another type.
+    use Image::Xpm ;
 
-If you want to create algorithms which manipulate 2D images in terms of
-(x,y,colour) then you could extend this class (without changing the file), like
-this:
+    my $i = Image::Xpm->new( -file => 'test.xpm' ) ;
+    $i->line( 1, 1, 3, 7, 'red' ) ;
+    $i->ellipse( 3, 3, 6, 7, '#ff00cc' ) ;
+    $i->rectangle( 4, 2, 9, 8, 'blue' ) ;
+
+If you want to create your own algorithms to manipulate images in terms of
+(x,y,colour) then you could extend this class (without changing the file),
+like this:
 
     # Filename: mylibrary.pl
     package Image::Base ; # Switch to this class to build on it.
@@ -50,6 +53,27 @@ type but with some different characteristics, e.g.
     my $p = Image::Xpm->new( -file => 'test1.xpm' ) ;
     my $q = $p->new_from_image( ref $p, -cpp => 2, -file => 'test2.xpm' ) ;
     $q->save ;
+
+=head2 line()
+
+    $i->line( $x0, $y0, $x1, $y1, $colour ) ;
+
+Draw a line from point ($x0,$y0) to point ($x1,$y1) in colour $colour.
+
+=head2 ellipse()
+
+    $i->ellipse( $x0, $y0, $x1, $y1, $colour ) ;
+
+Draw an oval enclosed by the rectangle whose top left is ($x0,$y0) and bottom
+right is ($x1,$y1) using a line colour of $colour.
+
+=head2 rectangle()
+
+    $i->rectangle( $x0, $y0, $x1, $y1, $colour, $fill ) ;
+
+Draw a rectangle whose top left is ($x0,$y0) and bottom right is ($x1,$y1)
+using a line colour of $colour. If C<$fill> is true then the rectangle will be
+filled.
 
 =head2 new()
 

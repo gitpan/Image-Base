@@ -1,11 +1,11 @@
 package Image::Base ;    # Documented at the __END__
 
-# $Id: Base.pm,v 1.2 2000/05/04 20:12:49 root Exp $
+# $Id: Base.pm,v 1.4 2000/05/04 22:30:23 root Exp root $
 
 use strict ;
 
 use vars qw( $VERSION ) ;
-$VERSION = '1.00' ;
+$VERSION = '1.04' ;
 
 use Carp qw( croak ) ;
 use Symbol () ;
@@ -89,6 +89,139 @@ sub new_from_image { # Object method
 }
 
 
+sub line { # Object method 
+    my $self  = shift ; 
+#    my $class = ref( $self ) || $self ;
+    
+    my( $x0, $y0, $x1, $y1, $colour ) = @_ ;
+
+    if( $x0 == $x1 ) {
+        ( $y0, $y1 ) = ( $y1, $y0 ) if $y0 > $y1 ;
+
+        for( my $y = $y0 ; $y <= $y1 ; $y++ ) {
+            $self->xy( $x0, $y, $colour ) ;
+        }
+    }
+    else {
+        # Line algorithm from Computer Graphics Principles and Practice.
+        ( $x0, $y0, $x1, $y1 ) = ( $x1, $y1, $x0, $y0 ) if $x0 > $x1 ; 
+
+        my $dy = $y1 - $y0 ;
+        my $dx = $x1 - $x0 ;
+        my $m  = $dx == 0 ? $dy : $dy/$dx ;
+        my $y  = $y0 ;
+
+        for( my $x = $x0 ; $x <= $x1 ; $x++ ) {
+            $self->xy( $x, int $y, $colour ) ;
+            $y += $m ;
+        }
+    }
+}
+
+
+sub ellipse { # Object method 
+    my $self  = shift ; 
+#    my $class = ref( $self ) || $self ;
+
+    my( $x0, $y0, $x1, $y1, $colour ) = @_ ;
+
+    ( $x0, $y0, $x1, $y1 ) = ( $x1, $y1, $x0, $y0 ) if $x0 > $x1 ; 
+ 
+    my $ox = $x1 > $x0 ? ( ( $x1 - $x0 ) / 2 ) + $x0 : 
+                         ( ( $x0 - $x1 ) / 2 ) + $x1 ;
+    my $oy = $y1 > $y0 ? ( ( $y1 - $y0 ) / 2 ) + $y0 : 
+                         ( ( $y0 - $y1 ) / 2 ) + $y1 ;
+    my $a  = abs( $x1 - $x0 ) / 2 ; 
+    my $b  = abs( $y1 - $y0 ) / 2 ; 
+    my $aa = $a ** 2 ;
+    my $bb = $b ** 2 ;
+
+    # Midpoint ellipse algorithm from Computer Graphics Principles and Practice.
+    my $x  = 0 ;
+    my $y  = $b ;
+    my $d1 = $bb - ( $aa * $b ) + ( $aa / 4 ) ;
+    $self->_ellipse_point( $ox, $oy, $x, $y, $colour ) ;
+
+    while( ( $aa * ( $y - 0.5 ) ) > ( $bb * ( $x + 1 ) ) ) {
+        if( $d1 < 0 ) {
+            $d1 += ( $bb * ( ( 2 * $x ) + 3 ) ) ;
+            ++$x ;
+        }
+        else {
+            $d1 += ( ( $bb * ( (  2 * $x ) + 3 ) ) +
+                     ( $aa * ( ( -2 * $y ) + 2 ) ) ) ;
+            ++$x ;
+            --$y ;
+        }
+        $self->_ellipse_point( $ox, $oy, $x, $y, $colour ) ;
+    }
+
+    my $d2 = ( $bb * ( ( $x + 0.5 ) ** 2 ) ) + 
+             ( $aa * ( ( $y - 1 )   ** 2 ) ) -
+             ( $aa * $bb ) ;
+    
+    while( $y > 0 ) {
+        if( $d2 < 0 ) {
+            $d2 += ( $bb * ( (  2 * $x ) + 2 ) ) +
+                   ( $aa * ( ( -2 * $y ) + 3 ) ) ;
+            ++$x ;
+            --$y ;
+        }
+        else {
+            $d2 += ( $aa * ( ( -2 * $y ) + 3 ) ) ;
+            --$y ;
+        }
+        $self->_ellipse_point( $ox, $oy, $x, $y, $colour ) ;
+    }
+}
+
+
+sub _ellipse_point { # Object method 
+    my $self  = shift ; 
+#    my $class = ref( $self ) || $self ;
+
+    my( $ox, $oy, $rx, $ry, $colour ) = @_ ;
+
+    $self->xy( $ox + $rx, $oy + $ry, $colour ) ;
+    $self->xy( $ox - $rx, $oy - $ry, $colour ) ;
+    $self->xy( $ox + $rx, $oy - $ry, $colour ) ;
+    $self->xy( $ox - $rx, $oy + $ry, $colour ) ;
+}
+
+
+sub rectangle { # Object method 
+    my $self  = shift ; 
+#    my $class = ref( $self ) || $self ;
+
+    my( $x0, $y0, $x1, $y1, $colour, $fill ) = @_ ;
+
+    if( defined $fill and $fill ) {
+        $self->_filled_rectangle( $x0, $y0, $x1, $y1, $colour ) ;
+    }
+    else {
+        # A rectangle is simply four lines...
+        $self->line( $x0, $y0, $x1, $y0, $colour ) ;
+        $self->line( $x1, $y0, $x1, $y1, $colour ) ;
+        $self->line( $x1, $y1, $x0, $y1, $colour ) ;
+        $self->line( $x0, $y1, $x0, $y0, $colour ) ;
+    }
+}
+
+
+sub _filled_rectangle { # Object method 
+    my $self  = shift ; 
+#    my $class = ref( $self ) || $self ;
+
+    my( $x0, $y0, $x1, $y1, $colour ) = @_ ;
+
+    ( $y0, $y1 ) = ( $y1, $y0 ) if $y0 > $y1 ;
+
+    for( my $y = $y0 ; $y <= $y1 ; $y++ ) {
+        $self->line( $x0, $y, $x1, $y, $colour ) ; 
+    }
+}
+
+
 1 ;
 
 
@@ -103,13 +236,16 @@ Image::Base - base class for loading, manipulating and saving images.
 This class should not be used directly. Known inheritors are Image::Xbm and
 Image::Xpm.
 
-An example of the generalised functionality that this class could provide is
-the C<new_from_image()> method (described later) which can be used to copy an
-image of one type to an image of another type.
+    use Image::Xpm ;
 
-If you want to create algorithms which manipulate 2D images in terms of
-(x,y,colour) then you could extend this class (without changing the file), like
-this:
+    my $i = Image::Xpm->new( -file => 'test.xpm' ) ;
+    $i->line( 1, 1, 3, 7, 'red' ) ;
+    $i->ellipse( 3, 3, 6, 7, '#ff00cc' ) ;
+    $i->rectangle( 4, 2, 9, 8, 'blue' ) ;
+
+If you want to create your own algorithms to manipulate images in terms of
+(x,y,colour) then you could extend this class (without changing the file),
+like this:
 
     # Filename: mylibrary.pl
     package Image::Base ; # Switch to this class to build on it.
@@ -146,6 +282,27 @@ type but with some different characteristics, e.g.
     my $p = Image::Xpm->new( -file => 'test1.xpm' ) ;
     my $q = $p->new_from_image( ref $p, -cpp => 2, -file => 'test2.xpm' ) ;
     $q->save ;
+
+=head2 line()
+
+    $i->line( $x0, $y0, $x1, $y1, $colour ) ;
+
+Draw a line from point ($x0,$y0) to point ($x1,$y1) in colour $colour.
+
+=head2 ellipse()
+
+    $i->ellipse( $x0, $y0, $x1, $y1, $colour ) ;
+
+Draw an oval enclosed by the rectangle whose top left is ($x0,$y0) and bottom
+right is ($x1,$y1) using a line colour of $colour.
+
+=head2 rectangle()
+
+    $i->rectangle( $x0, $y0, $x1, $y1, $colour, $fill ) ;
+
+Draw a rectangle whose top left is ($x0,$y0) and bottom right is ($x1,$y1)
+using a line colour of $colour. If C<$fill> is true then the rectangle will be
+filled.
 
 =head2 new()
 
