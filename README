@@ -82,6 +82,16 @@ Virtual - must be overridden.
 Recommend that it at least supports C<-file> (filename), C<-width> and
 C<-height>.
 
+=head2 new_from_serialised()
+
+Not implemented. Recommended for inheritors. Should accept a string serialised
+using serialise() and return an object (reference).
+
+=head2 serialise()
+
+Not implemented. Recommended for inheritors. Should return a string
+representation (ideally compressed).
+
 =head2 get()
      
     my $width = $i->get( -width ) ;
@@ -141,9 +151,15 @@ the name in the C<-file> attribute. The image is saved in xpm format.
 
 =head1 CHANGES
 
+2000/05/05
+
+Added some basic drawing methods. Minor documentation changes.
+
+
 2000/05/04
 
 Created. 
+
 
 =head1 AUTHOR
 

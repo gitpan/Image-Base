@@ -1,11 +1,11 @@
 package Image::Base ;    # Documented at the __END__
 
-# $Id: Base.pm,v 1.4 2000/05/04 22:30:23 root Exp root $
+# $Id: Base.pm,v 1.5 2000/05/06 12:49:00 root Exp root $
 
 use strict ;
 
 use vars qw( $VERSION ) ;
-$VERSION = '1.04' ;
+$VERSION = '1.05' ;
 
 use Carp qw( croak ) ;
 use Symbol () ;
@@ -311,6 +311,16 @@ Virtual - must be overridden.
 Recommend that it at least supports C<-file> (filename), C<-width> and
 C<-height>.
 
+=head2 new_from_serialised()
+
+Not implemented. Recommended for inheritors. Should accept a string serialised
+using serialise() and return an object (reference).
+
+=head2 serialise()
+
+Not implemented. Recommended for inheritors. Should return a string
+representation (ideally compressed).
+
 =head2 get()
      
     my $width = $i->get( -width ) ;
@@ -370,9 +380,15 @@ the name in the C<-file> attribute. The image is saved in xpm format.
 
 =head1 CHANGES
 
+2000/05/05
+
+Added some basic drawing methods. Minor documentation changes.
+
+
 2000/05/04
 
 Created. 
+
 
 =head1 AUTHOR
 
