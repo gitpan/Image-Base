@@ -1,11 +1,11 @@
 package Image::Base ;    # Documented at the __END__
 
-# $Id: Base.pm,v 1.5 2000/05/06 12:49:00 root Exp root $
+# $Id: Base.pm,v 1.6 2000/05/15 22:11:12 root Exp root $
 
 use strict ;
 
 use vars qw( $VERSION ) ;
-$VERSION = '1.05' ;
+$VERSION = '1.06' ;
 
 use Carp qw( croak ) ;
 use Symbol () ;
@@ -45,11 +45,11 @@ sub DESTROY {
 ### Public methods
 
 
-sub new   { croak __PACKAGE__ .   "::new() must be overridden" }
-sub xy    { croak __PACKAGE__ .    "::xy() must be overridden" }
-sub load  { croak __PACKAGE__ .  "::load() must be overridden" }
-sub save  { croak __PACKAGE__ .  "::save() must be overridden" }
-sub set   { croak __PACKAGE__ .   "::set() must be overridden" }
+sub new   { croak __PACKAGE__ .  "::new() must be overridden" }
+sub xy    { croak __PACKAGE__ .   "::xy() must be overridden" }
+sub load  { croak __PACKAGE__ . "::load() must be overridden" }
+sub save  { croak __PACKAGE__ . "::save() must be overridden" }
+sub set   { croak __PACKAGE__ .  "::set() must be overridden" }
 
 
 sub get { # Object method 
@@ -75,7 +75,7 @@ sub new_from_image { # Object method
 
     # If $newclass was an object reference we inherit its characteristics
     # except for width/height and any arguments we've supplied.
-    my $obj = $newclass->new( -width => $width, -height => $height, @_ ) ;
+    my $obj = $newclass->new( @_, -width => $width, -height => $height ) ;
 
     croak "new_from_image() cannot convert to " . ref $obj unless $obj->can( 'xy' ) ;
 
@@ -108,7 +108,7 @@ sub line { # Object method
 
         my $dy = $y1 - $y0 ;
         my $dx = $x1 - $x0 ;
-        my $m  = $dx == 0 ? $dy : $dy/$dx ;
+        my $m  = $dx == 0 ? $dy : $dy / $dx ;
         my $y  = $y0 ;
 
         for( my $x = $x0 ; $x <= $x1 ; $x++ ) {
