@@ -1,11 +1,11 @@
 package Image::Base ;    # Documented at the __END__
 
-# $Id: Base.pm,v 1.6 2000/05/15 22:11:12 root Exp root $
+# $Id: Base.pm,v 1.8 2000/05/25 20:45:54 root Exp $
 
 use strict ;
 
 use vars qw( $VERSION ) ;
-$VERSION = '1.06' ;
+$VERSION = '1.07' ;
 
 use Carp qw( croak ) ;
 use Symbol () ;
