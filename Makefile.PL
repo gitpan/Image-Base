@@ -5,13 +5,14 @@ use ExtUtils::MakeMaker ;
 
 WriteMakefile(
     'NAME'         => 'Image::Base',
-    'VERSION_FROM' => 'Base.pm', # finds $VERSION
+    'VERSION_FROM' => 'lib/Image/Base.pm', # finds $VERSION
     'DISTNAME'     => 'Image-Base',
     ($] >= 5.005 ?
         (
             ABSTRACT => 'Base class for image manipulation',
             AUTHOR   => 'Mark Summerfield <summer@perlpress.com>',
         ) : () ),
+    PREREQ_PM      => { 'Test::More' => 0 },
     'LIBS'         => [''],   # e.g., '-lm'
     'DEFINE'       => '',     # e.g., '-DHAVE_SOMETHING'
     'INC'          => '',     # e.g., '-I/usr/include/other'

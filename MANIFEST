@@ -1,5 +1,9 @@
-Base.pm
+lib/Image/Base.pm
 t/base.t
+t/line.t
 MANIFEST
 Makefile.PL
 README
+LGPL-3
+META.yml                                 Module meta-data (added by MakeMaker)
+SIGNATURE                                Public-key signature (added by MakeMaker)

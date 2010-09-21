@@ -1,14 +1,16 @@
 package Image::Base ;    # Documented at the __END__
 
-# $Id: Base.pm,v 1.8 2000/05/25 20:45:54 root Exp $
-
 use strict ;
 
 use vars qw( $VERSION ) ;
-$VERSION = '1.07' ;
+
+$VERSION = '1.08' ;
 
 use Carp qw( croak ) ;
 use Symbol () ;
+
+# uncomment this to run the ### lines
+#use Smart::Comments;
 
 # All the supplied methods are expected to be inherited by subclasses; some
 # will be adequate, some will need to be overridden and some *must* be
@@ -89,31 +91,49 @@ sub new_from_image { # Object method
 }
 
 
-sub line { # Object method 
-    my $self  = shift ; 
-#    my $class = ref( $self ) || $self ;
-    
-    my( $x0, $y0, $x1, $y1, $colour ) = @_ ;
+sub line { # Object method
+    my( $self, $x0, $y0, $x1, $y1, $colour ) = @_ ;
 
-    if( $x0 == $x1 ) {
-        ( $y0, $y1 ) = ( $y1, $y0 ) if $y0 > $y1 ;
+    # basic Bressenham line drawing
 
-        for( my $y = $y0 ; $y <= $y1 ; $y++ ) {
-            $self->xy( $x0, $y, $colour ) ;
-        }
-    }
-    else {
-        # Line algorithm from Computer Graphics Principles and Practice.
-        ( $x0, $y0, $x1, $y1 ) = ( $x1, $y1, $x0, $y0 ) if $x0 > $x1 ; 
+    my $dy = abs ($y1 - $y0);
+    my $dx = abs ($x1 - $x0);
+    ### $dy
+    ### $dx
 
-        my $dy = $y1 - $y0 ;
-        my $dx = $x1 - $x0 ;
-        my $m  = $dx == 0 ? $dy : $dy / $dx ;
-        my $y  = $y0 ;
+    if ($dx >= $dy) {
+        # shallow slope
 
+        ( $x0, $y0, $x1, $y1 ) = ( $x1, $y1, $x0, $y0 ) if $x0 > $x1 ;
+
+        my $y = $y0 ;
+        my $ystep = ($y1 > $y0 ? 1 : -1);
+        my $rem = int($dx/2) - $dx;
         for( my $x = $x0 ; $x <= $x1 ; $x++ ) {
-            $self->xy( $x, int $y, $colour ) ;
-            $y += $m ;
+            ### $rem
+            $self->xy( $x, $y, $colour ) ;
+            $rem += $dy;
+            if ($rem >= 0) {
+                $rem -= $dx;
+                $y += $ystep;
+            }
+        }
+    } else {
+        # steep slope
+
+        ( $x0, $y0, $x1, $y1 ) = ( $x1, $y1, $x0, $y0 ) if $y0 > $y1 ;
+
+        my $x = $x0 ;
+        my $xstep = ($x1 > $x0 ? 1 : -1);
+        my $rem = int($dy/2) - $dy;
+        for( my $y = $y0 ; $y <= $y1 ; $y++ ) {
+            ### $rem
+            $self->xy( $x, $y, $colour ) ;
+            $rem += $dx;
+            if ($rem >= 0) {
+                $rem -= $dy;
+                $x += $xstep;
+            }
         }
     }
 }
@@ -378,18 +398,6 @@ Virtual - must be overridden. Expected to provide the following functionality:
 Save the image using the name given, or if none is given save the image using
 the name in the C<-file> attribute. The image is saved in xpm format.
 
-=head1 CHANGES
-
-2000/05/05
-
-Added some basic drawing methods. Minor documentation changes.
-
-
-2000/05/04
-
-Created. 
-
-
 =head1 AUTHOR
 
 Mark Summerfield. I can be contacted as <summer@perlpress.com> -
@@ -399,7 +407,12 @@ please include the word 'imagebase' in the subject line.
 
 Copyright (c) Mark Summerfield 2000. All Rights Reserved.
 
+Copyright (c) Kevin Ryde 2010.
+
 This module may be used/distributed/modified under the LGPL. 
 
 =cut
 
+# Local variables:
+# cperl-indent-level: 4
+# End:
