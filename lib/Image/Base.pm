@@ -4,13 +4,13 @@ use strict ;
 
 use vars qw( $VERSION ) ;
 
-$VERSION = '1.08' ;
+$VERSION = '1.09' ;
 
 use Carp qw( croak ) ;
 use Symbol () ;
 
 # uncomment this to run the ### lines
-#use Smart::Comments;
+#use Smart::Comments '###';
 
 # All the supplied methods are expected to be inherited by subclasses; some
 # will be adequate, some will need to be overridden and some *must* be
@@ -98,8 +98,8 @@ sub line { # Object method
 
     my $dy = abs ($y1 - $y0);
     my $dx = abs ($x1 - $x0);
-    ### $dy
-    ### $dx
+    #### $dy
+    #### $dx
 
     if ($dx >= $dy) {
         # shallow slope
@@ -110,7 +110,7 @@ sub line { # Object method
         my $ystep = ($y1 > $y0 ? 1 : -1);
         my $rem = int($dx/2) - $dx;
         for( my $x = $x0 ; $x <= $x1 ; $x++ ) {
-            ### $rem
+            #### $rem
             $self->xy( $x, $y, $colour ) ;
             $rem += $dy;
             if ($rem >= 0) {
@@ -127,7 +127,7 @@ sub line { # Object method
         my $xstep = ($x1 > $x0 ? 1 : -1);
         my $rem = int($dy/2) - $dy;
         for( my $y = $y0 ; $y <= $y1 ; $y++ ) {
-            ### $rem
+            #### $rem
             $self->xy( $x, $y, $colour ) ;
             $rem += $dx;
             if ($rem >= 0) {
@@ -139,30 +139,85 @@ sub line { # Object method
 }
 
 
-sub ellipse { # Object method 
-    my $self  = shift ; 
-#    my $class = ref( $self ) || $self ;
+# Midpoint ellipse algorithm from Computer Graphics Principles and Practice.
+#
+# The points of the ellipse are
+#     (x/a)^2 + (y/b)^2 == 1
+# or expand out to
+#     x^2*b^2 + y^2*a^2 == a^2*b^2
+#
+# The x,y coordinates are taken relative to the centre $ox,$oy, with radials
+# $a and $b half the width $x1-x0 and height $y1-$y0.  If $x1-$x0 is odd,
+# then $ox and $a are not integers but have 0.5 parts.  Starting from $x=0.5
+# and keeping that 0.5 means the final _ellipse_point() drawn xy() pixels
+# are integers.  Similarly in y.
+#
+# Only a few lucky pixels exactly satisfy the ellipse equation above.  For
+# the rest there's an error amount expressed as
+#
+#     E(x,y) = x^2*b^2 + y^2*a^2 - a^2*b^2
+#
+# The first loop maintains a "discriminator" d1
+#
+#     d1 = (x+1)^2*b^2 + (y-1/2)^2*a^2 - a^2*b^2
+#
+# which is E(x+1,y-1/2), being the error amount for the next x+1 position,
+# taken at y-1/2 which is the midpoint between the possible next y or y-1
+# pixels.  When d1 > 0 it means that the y-1/2 position is outside the
+# ellipse and the y-1 pixel is taken to be the better approximation to the
+# ellipse than y.
+#
+# The second loop does the four octants near the X axis, ie. the nearly
+# vertical parts.  The discriminator d2 is instead at the next y-1 position
+# and between x and x+1,
+#
+#     d2 = E(x+1/2,y-1) = (x+1/2)^2*b^2 + (y-1)^2*a^2 - a^2*b^2
+#
+#
+# The calculations could be made all-integer by counting $x and $y starting
+# from 0 at the bounding box edges and counting inwards, rather than
+# outwards from a fractional centre.  E(x,y) could have a factor of 2 or 4
+# put through as necessary (the sign +ve or -ve staying the same).  Rumour
+# has it E() can grow to roughly max(a^3, b^3), which fits a 32-bit signed
+# integer for up to 800 pixels or so radius, or 1600 for unsigned 32-bit.
+# Of course perl will then switch to 53-bit floats automatically, which is
+# then still exact up to about 200,000 pixels radius.
+#
+# It wouldn't be too hard to draw runs of horizontal pixels with line()
+# instead of individual pixels.  That might help subclasses doing a
+# block-fill for a horizontal line segment.  Except only big ellipses have
+# more than a few adjacent horizontal pixels.  It'd probably be possible to
+# calculate (with a sqrt solving a little quadratic) where d1 goes positive
+# and thus the horizontal ends, if that seemed better than looping.
+#
+
+
+sub ellipse { # Object method
+    my $self  = shift ;
+    #    my $class = ref( $self ) || $self ;
 
     my( $x0, $y0, $x1, $y1, $colour ) = @_ ;
 
-    ( $x0, $y0, $x1, $y1 ) = ( $x1, $y1, $x0, $y0 ) if $x0 > $x1 ; 
- 
-    my $ox = $x1 > $x0 ? ( ( $x1 - $x0 ) / 2 ) + $x0 : 
-                         ( ( $x0 - $x1 ) / 2 ) + $x1 ;
-    my $oy = $y1 > $y0 ? ( ( $y1 - $y0 ) / 2 ) + $y0 : 
-                         ( ( $y0 - $y1 ) / 2 ) + $y1 ;
-    my $a  = abs( $x1 - $x0 ) / 2 ; 
-    my $b  = abs( $y1 - $y0 ) / 2 ; 
+    my $ox = ($x0 + $x1) / 2;
+    my $oy = ($y0 + $y1) / 2;
+    my $a  = abs( $x1 - $x0 ) / 2 ;
+    my $b  = abs( $y1 - $y0 ) / 2 ;
     my $aa = $a ** 2 ;
     my $bb = $b ** 2 ;
 
-    # Midpoint ellipse algorithm from Computer Graphics Principles and Practice.
-    my $x  = 0 ;
+    my $x  = $a - int($a) ;
     my $y  = $b ;
-    my $d1 = $bb - ( $aa * $b ) + ( $aa / 4 ) ;
+
+    # d1 = (x+1)^2*b^2 + (y-1/2)^2*a^2 - a^2*b^2
+    # which for x=0 y=b is b^2 - a^2*b + x^2/4
+    # or for x=0.5 y=b is 9/4*b^2 ...
+    #
+    my $d1 = ($x ? 2.25*$bb : $bb) - ( $aa * $b ) + ( $aa / 4 ) ;
+
     $self->_ellipse_point( $ox, $oy, $x, $y, $colour ) ;
 
     while( ( $aa * ( $y - 0.5 ) ) > ( $bb * ( $x + 1 ) ) ) {
+        ### assert: $d1 == ($x+1)**2 * $bb + ($y-.5)**2 * $aa - $aa * $bb
         if( $d1 < 0 ) {
             $d1 += ( $bb * ( ( 2 * $x ) + 3 ) ) ;
             ++$x ;
@@ -176,14 +231,14 @@ sub ellipse { # Object method
         $self->_ellipse_point( $ox, $oy, $x, $y, $colour ) ;
     }
 
-    my $d2 = ( $bb * ( ( $x + 0.5 ) ** 2 ) ) + 
-             ( $aa * ( ( $y - 1 )   ** 2 ) ) -
-             ( $aa * $bb ) ;
-    
-    while( $y > 0 ) {
+    my $d2 = ( $bb * ( ( $x + 0.5 ) ** 2 ) ) +
+      ( $aa * ( ( $y - 1 )   ** 2 ) ) -
+        ( $aa * $bb ) ;
+
+    while( $y >= 1 ) {
         if( $d2 < 0 ) {
             $d2 += ( $bb * ( (  2 * $x ) + 2 ) ) +
-                   ( $aa * ( ( -2 * $y ) + 3 ) ) ;
+              ( $aa * ( ( -2 * $y ) + 3 ) ) ;
             ++$x ;
             --$y ;
         }
@@ -192,7 +247,20 @@ sub ellipse { # Object method
             --$y ;
         }
         $self->_ellipse_point( $ox, $oy, $x, $y, $colour ) ;
+
+        ### assert: $d2 == $bb*($x+0.5)**2 + $aa*($y-1)**2 - $aa*$bb
     }
+    # loop stops after drawing an _ellipse_point() at $y==0 or $y==0.5, the
+    # latter if $b has a .5 fraction
+    ### assert: $y == $b - int($b)
+
+    # tail if small height large width
+    while( ++$x <= $a ) {
+        $self->_ellipse_point( $ox, $oy, $x, $y, $colour ) ;
+    }
+    # $x started from the possible 0.5 fraction part of $a, so having
+    # stepped up by 1s it will reach $a exactly
+    ### assert: $x == $a+1
 }
 
 
@@ -253,8 +321,8 @@ Image::Base - base class for loading, manipulating and saving images.
 
 =head1 SYNOPSIS
 
-This class should not be used directly. Known inheritors are Image::Xbm and
-Image::Xpm.
+This class should not be used directly.  Known inheritors are Image::Xbm and
+Image::Xpm (and see L</SEE ALSO> below).
 
     use Image::Xpm ;
 
@@ -397,6 +465,24 @@ Virtual - must be overridden. Expected to provide the following functionality:
 
 Save the image using the name given, or if none is given save the image using
 the name in the C<-file> attribute. The image is saved in xpm format.
+
+=head1 SEE ALSO
+
+L<Image::Xpm>,
+L<Image::Xbm>,
+L<Image::Pbm>,
+L<Image::Base::GD>,
+L<Image::Base::PNGwriter>,
+L<Image::Base::Multiplex>,
+L<Image::Base::Text>
+
+L<Image::Base::Gtk2::Gdk::Drawable>,
+L<Image::Base::Gtk2::Gdk::Pixbuf>,
+L<Image::Base::Gtk2::Gdk::Pixmap>,
+L<Image::Base::Gtk2::Gdk::Window>,
+L<Image::Base::X11::Protocol::Drawable>,
+L<Image::Base::X11::Protocol::Pixmap>,
+L<Image::Base::X11::Protocol::Window>
 
 =head1 AUTHOR
 

@@ -1,0 +1,26 @@
+
+2010/09/21 version 1.09
+
+Fix ellipse() on even width or height.
+    - avoid calling xy() with 0.5 fractional position
+    - helps drawing of right/bottom edges depending how subclasses rounded
+Fix ellipse() horizontal ends when small height and big width.
+Docs cross reference modules extending Image::Base.
+
+
+2010/09/18 version 1.08
+
+Fix line() for shallow slope rounding.
+Fix line() for steep slope pixel spacing.
+
+
+2000/05/05
+
+Added some basic drawing methods. Minor documentation changes.
+
+
+2000/05/04
+
+Created. 
+
+
