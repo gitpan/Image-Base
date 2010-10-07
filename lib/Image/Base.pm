@@ -4,7 +4,7 @@ use strict ;
 
 use vars qw( $VERSION ) ;
 
-$VERSION = '1.09' ;
+$VERSION = '1.10' ;
 
 use Carp qw( croak ) ;
 use Symbol () ;
@@ -277,38 +277,40 @@ sub _ellipse_point { # Object method
 }
 
 
-sub rectangle { # Object method 
-    my $self  = shift ; 
-#    my $class = ref( $self ) || $self ;
+sub rectangle { # Object method
+  my ($self, $x0, $y0, $x1, $y1, $colour, $fill) = @_;
 
-    my( $x0, $y0, $x1, $y1, $colour, $fill ) = @_ ;
+  if ($x0 == $x1) {
+    # vertical line only
+    $self->line( $x0, $y0, $x1, $y1, $colour ) ;
 
-    if( defined $fill and $fill ) {
-        $self->_filled_rectangle( $x0, $y0, $x1, $y1, $colour ) ;
-    }
-    else {
-        # A rectangle is simply four lines...
-        $self->line( $x0, $y0, $x1, $y0, $colour ) ;
-        $self->line( $x1, $y0, $x1, $y1, $colour ) ;
-        $self->line( $x1, $y1, $x0, $y1, $colour ) ;
-        $self->line( $x0, $y1, $x0, $y0, $colour ) ;
-    }
-}
-
-
-sub _filled_rectangle { # Object method 
-    my $self  = shift ; 
-#    my $class = ref( $self ) || $self ;
-
-    my( $x0, $y0, $x1, $y1, $colour ) = @_ ;
-
+  } else {
     ( $y0, $y1 ) = ( $y1, $y0 ) if $y0 > $y1 ;
 
-    for( my $y = $y0 ; $y <= $y1 ; $y++ ) {
-        $self->line( $x0, $y, $x1, $y, $colour ) ; 
-    }
-}
+    if ($fill) {
+      for( my $y = $y0 ; $y <= $y1 ; $y++ ) {
+        $self->line( $x0, $y, $x1, $y, $colour ) ;
+      }
 
+    } else { # unfilled
+
+      $self->line( $x0, $y0,
+                   $x1, $y0, $colour ) ;   # top
+      if (++$y0 <= $y1) {
+        # height >= 2
+        if ($y0 < $y1) {
+          # height >= 3, verticals
+          $self->line( $x0, $y0,
+                       $x0, $y1-1, $colour ) ;  # left
+          $self->line( $x1, $y0,
+                       $x1, $y1-1, $colour ) ;  # right
+        }
+        $self->line( $x1, $y1,
+                     $x0, $y1, $colour ) ;  # bottom
+      }
+    }
+  }
+}
 
 1 ;
 

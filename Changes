@@ -1,5 +1,10 @@
 
-2010/09/21 version 1.09
+2010/10/08 version 1.10
+
+Enhance rectangle() unfilled to not overlap drawn pixels.
+
+
+2010/10/04 version 1.09
 
 Fix ellipse() on even width or height.
     - avoid calling xy() with 0.5 fractional position

@@ -1,7 +1,7 @@
 Changes
 lib/Image/Base.pm
 t/base.t
-t/line.t
+t/samples.t
 MANIFEST
 Makefile.PL
 README
