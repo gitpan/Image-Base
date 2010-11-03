@@ -21,6 +21,9 @@ use strict;
 use warnings;
 use Image::Xpm;
 
+# uncomment this to run the ### lines
+#use Smart::Comments;
+
 {
   package MyGrid;
   use Image::Base;
@@ -38,22 +41,24 @@ use Image::Xpm;
   sub xy {
     my ($self, $x, $y, $colour) = @_;
     if ($x != int($x) || $y != int($y)) {
-      print "$x $y\n";
     }
+      print "$x $y\n";
     if ($colour eq 'black') {
       $colour = ' ';
     } else {
       $colour = '*';
     }
     substr ($self->{'str'}, $x+1 + ($y+1)*($self->{'-width'}+3), 1) = $colour;
+    print $self->{'str'};
   }
 }
 
 my $w = 77;
-my $h = 37;
+my $h = 3;
 
 {
   my $image = MyGrid->new (-width => $w, -height => $h);
+  print "ellipse draw\n";
   $image->ellipse (0,0, $w-1,$h-1, 'white');
   print $image->{'str'};
   exit 0;

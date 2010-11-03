@@ -1,4 +1,9 @@
 
+2010/10/22 version 1.11
+
+Tweak ellipse() discriminator changeover, use rectangle() for smalls.
+
+
 2010/10/08 version 1.10
 
 Enhance rectangle() unfilled to not overlap drawn pixels.

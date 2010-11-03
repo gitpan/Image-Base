@@ -4,7 +4,7 @@ use strict ;
 
 use vars qw( $VERSION ) ;
 
-$VERSION = '1.10' ;
+$VERSION = '1.11' ;
 
 use Carp qw( croak ) ;
 use Symbol () ;
@@ -112,8 +112,7 @@ sub line { # Object method
         for( my $x = $x0 ; $x <= $x1 ; $x++ ) {
             #### $rem
             $self->xy( $x, $y, $colour ) ;
-            $rem += $dy;
-            if ($rem >= 0) {
+            if (($rem += $dy) >= 0) {
                 $rem -= $dx;
                 $y += $ystep;
             }
@@ -129,8 +128,7 @@ sub line { # Object method
         for( my $y = $y0 ; $y <= $y1 ; $y++ ) {
             #### $rem
             $self->xy( $x, $y, $colour ) ;
-            $rem += $dx;
-            if ($rem >= 0) {
+            if (($rem += $dx) >= 0) {
                 $rem -= $dy;
                 $x += $xstep;
             }
@@ -157,7 +155,7 @@ sub line { # Object method
 #
 #     E(x,y) = x^2*b^2 + y^2*a^2 - a^2*b^2
 #
-# The first loop maintains a "discriminator" d1
+# The first loop maintains a "discriminator" d1 in $d
 #
 #     d1 = (x+1)^2*b^2 + (y-1/2)^2*a^2 - a^2*b^2
 #
@@ -167,28 +165,41 @@ sub line { # Object method
 # ellipse and the y-1 pixel is taken to be the better approximation to the
 # ellipse than y.
 #
-# The second loop does the four octants near the X axis, ie. the nearly
-# vertical parts.  The discriminator d2 is instead at the next y-1 position
-# and between x and x+1,
+# The first loop does the four octants near the Y axis, ie. the nearly
+# horizontal parts.  The second loop does the four octants near the X axis,
+# ie. the nearly vertical parts.  For the second loop the discriminator in
+# $d is instead at the next y-1 position and between x and x+1,
 #
 #     d2 = E(x+1/2,y-1) = (x+1/2)^2*b^2 + (y-1)^2*a^2 - a^2*b^2
 #
+# The difference between d1 and d2 for the changeover is as follows and is
+# used to step across to the new position rather than a full recalculation.
+# Not much difference in speed, but less code.
 #
-# The calculations could be made all-integer by counting $x and $y starting
-# from 0 at the bounding box edges and counting inwards, rather than
-# outwards from a fractional centre.  E(x,y) could have a factor of 2 or 4
-# put through as necessary (the sign +ve or -ve staying the same).  Rumour
-# has it E() can grow to roughly max(a^3, b^3), which fits a 32-bit signed
-# integer for up to 800 pixels or so radius, or 1600 for unsigned 32-bit.
-# Of course perl will then switch to 53-bit floats automatically, which is
-# then still exact up to about 200,000 pixels radius.
+#     E(x+1/2,y-1) - E(x+1,y-1/2)
+#            = -b^2 * (x + 3/4) + a^2 * (3/4 - y)
 #
-# It wouldn't be too hard to draw runs of horizontal pixels with line()
-# instead of individual pixels.  That might help subclasses doing a
-# block-fill for a horizontal line segment.  Except only big ellipses have
-# more than a few adjacent horizontal pixels.  It'd probably be possible to
-# calculate (with a sqrt solving a little quadratic) where d1 goes positive
-# and thus the horizontal ends, if that seemed better than looping.
+#     since (x+1/2)^2 - (x+1)^2 = -x - 3/4
+#           (y-1)^2 - (y-1/2)^2 = -y + 3/4
+#
+#
+# The calculations could be made all-integer by counting $x and $y from 0 at
+# the bounding box edges directed inwards, rather than outwards from a
+# fractional centre.  E(x,y) could have a factor of 2 or 4 put through as
+# necessary (the discriminating >0 or <0 staying the same).  Rumour has it
+# E() can grow to roughly max(a^3, b^3), which fits a 32-bit signed integer
+# for up to 800 pixels or so radius, or 1600 for unsigned 32-bit, and of
+# course Perl switches to 53-bit floats automatically, which is then still
+# an exact integer up to about 200,000 pixels radius.
+#
+# It'd be possible to draw runs of horizontal pixels with line() instead of
+# individual xy() calls.  That might help subclasses doing a block-fill for
+# a horizontal line segment.  Except only big or flat ellipses have more
+# than a few adjacent horizontal pixels.
+#
+# It's possible to calculate (with a sqrt) where d1 goes positive and thus
+# the horizontal ends, if that seemed better than watching $aa*($y-0.5) vs
+# $bb *($x+1) for the end of the first loop.
 #
 
 
@@ -198,57 +209,65 @@ sub ellipse { # Object method
 
     my( $x0, $y0, $x1, $y1, $colour ) = @_ ;
 
-    my $ox = ($x0 + $x1) / 2;
-    my $oy = ($y0 + $y1) / 2;
     my $a  = abs( $x1 - $x0 ) / 2 ;
     my $b  = abs( $y1 - $y0 ) / 2 ;
+    if ($a <= .5 || $b <= .5) {
+        # one or two pixels high or wide, treat as rectangle
+        $self->rectangle ($x0, $y0, $x1, $y1, $colour );
+        return;
+    }
     my $aa = $a ** 2 ;
     my $bb = $b ** 2 ;
+    my $ox = ($x0 + $x1) / 2;
+    my $oy = ($y0 + $y1) / 2;
 
-    my $x  = $a - int($a) ;
+    my $x  = $a - int($a) ;  # 0 or 0.5
     my $y  = $b ;
+    ### initial: "origin $ox,$oy  start xy $x,$y"
 
-    # d1 = (x+1)^2*b^2 + (y-1/2)^2*a^2 - a^2*b^2
-    # which for x=0 y=b is b^2 - a^2*b + x^2/4
-    # or for x=0.5 y=b is 9/4*b^2 ...
+    # d1 = E(x+1,y-1/2) = (x+1)^2*b^2 + (y-1/2)^2*a^2 - a^2*b^2
+    # which for x=0,y=b is b^2 - a^2*b + a^2/4
+    # or for x=0.5,y=b  is 9/4*b^2 - ...
     #
-    my $d1 = ($x ? 2.25*$bb : $bb) - ( $aa * $b ) + ( $aa / 4 ) ;
+    my $d = ($x ? 2.25*$bb : $bb) - ( $aa * $b ) + ( $aa / 4 ) ;
 
     $self->_ellipse_point( $ox, $oy, $x, $y, $colour ) ;
 
     while( ( $aa * ( $y - 0.5 ) ) > ( $bb * ( $x + 1 ) ) ) {
-        ### assert: $d1 == ($x+1)**2 * $bb + ($y-.5)**2 * $aa - $aa * $bb
-        if( $d1 < 0 ) {
-            $d1 += ( $bb * ( ( 2 * $x ) + 3 ) ) ;
+        ### assert: $d == ($x+1)**2 * $bb + ($y-.5)**2 * $aa - $aa * $bb
+        if( $d < 0 ) {
+            $d += ( $bb * ( ( 2 * $x ) + 3 ) ) ;
             ++$x ;
         }
         else {
-            $d1 += ( ( $bb * ( (  2 * $x ) + 3 ) ) +
-                     ( $aa * ( ( -2 * $y ) + 2 ) ) ) ;
+            $d += ( ( $bb * ( (  2 * $x ) + 3 ) ) +
+                    ( $aa * ( ( -2 * $y ) + 2 ) ) ) ;
             ++$x ;
             --$y ;
         }
         $self->_ellipse_point( $ox, $oy, $x, $y, $colour ) ;
     }
 
-    my $d2 = ( $bb * ( ( $x + 0.5 ) ** 2 ) ) +
-      ( $aa * ( ( $y - 1 )   ** 2 ) ) -
-        ( $aa * $bb ) ;
+    # switch to d2 = E(x+1/2,y-1) by adding E(x+1/2,y-1) - E(x+1,y-1/2)
+    $d += $aa*(.75-$y) - $bb*($x+.75);
+    ### assert: $d == $bb*($x+0.5)**2 + $aa*($y-1)**2 - $aa*$bb
+
+    ### second loop at: "$x, $y"
 
     while( $y >= 1 ) {
-        if( $d2 < 0 ) {
-            $d2 += ( $bb * ( (  2 * $x ) + 2 ) ) +
+        if( $d < 0 ) {
+            $d += ( $bb * ( (  2 * $x ) + 2 ) ) +
               ( $aa * ( ( -2 * $y ) + 3 ) ) ;
             ++$x ;
             --$y ;
         }
         else {
-            $d2 += ( $aa * ( ( -2 * $y ) + 3 ) ) ;
+            $d += ( $aa * ( ( -2 * $y ) + 3 ) ) ;
             --$y ;
         }
         $self->_ellipse_point( $ox, $oy, $x, $y, $colour ) ;
 
-        ### assert: $d2 == $bb*($x+0.5)**2 + $aa*($y-1)**2 - $aa*$bb
+        ### assert: $d == $bb*($x+0.5)**2 + $aa*($y-1)**2 - $aa*$bb
     }
     # loop stops after drawing an _ellipse_point() at $y==0 or $y==0.5, the
     # latter if $b has a .5 fraction
@@ -269,6 +288,7 @@ sub _ellipse_point { # Object method
 #    my $class = ref( $self ) || $self ;
 
     my( $ox, $oy, $rx, $ry, $colour ) = @_ ;
+    ### _ellipse_point: "$rx,$ry"
 
     $self->xy( $ox + $rx, $oy + $ry, $colour ) ;
     $self->xy( $ox - $rx, $oy - $ry, $colour ) ;
