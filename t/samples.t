@@ -18,7 +18,7 @@
 # along with Image-Base.  If not, see <http://www.gnu.org/licenses/>.
 
 use strict;
-use Test::More tests => 94;
+use Test::More tests => 81;
 
 # whether to mark repeat-drawn pixels as "X" (repeat drawn pixels being
 # wasteful and undesirable if they can be avoided reasonably easily).
@@ -421,11 +421,10 @@ HERE
 #------------------------------------------------------------------------------
 # ellipse()
 
-$MyGrid_flag_overlap = 0;
 foreach my $elem (
 
                   # one pixel
-                  [2,1, 2,1, <<'HERE'],
+                  [2,1, 2,1, 0, <<'HERE'],
 +--------------------+
 |                    |
 |  *                 |
@@ -440,10 +439,25 @@ foreach my $elem (
 +--------------------+
 HERE
 
-                  [1,0, 3,2, <<'HERE'],
+                  # "X" overlap of top centre pixel when unfilled
+                  [1,0, 3,2, 0, <<'HERE'],
 +--------------------+
-|  *                 |
+|  X                 |
 | * *                |
+|  X                 |
+|                    |
+|                    |
+|                    |
+|                    |
+|                    |
+|                    |
+|                    |
++--------------------+
+HERE
+                  [1,0, 3,2, 1, <<'HERE'],
++--------------------+
+|  *                 |
+| ***                |
 |  *                 |
 |                    |
 |                    |
@@ -455,7 +469,7 @@ HERE
 +--------------------+
 HERE
 
-                  [0,0, 3,3, <<'HERE'],
+                  [0,0, 3,3, 0, <<'HERE'],
 +--------------------+
 | **                 |
 |*  *                |
@@ -469,13 +483,42 @@ HERE
 |                    |
 +--------------------+
 HERE
+                  [0,0, 3,3, 1, <<'HERE'],
++--------------------+
+| **                 |
+|****                |
+|****                |
+| **                 |
+|                    |
+|                    |
+|                    |
+|                    |
+|                    |
+|                    |
++--------------------+
+HERE
 
-                  [1,0, 5,4, <<'HERE'],
+                  # "X" overlap of top centre pixel when unfilled
+                  [1,0, 5,4, 0, <<'HERE'],
++--------------------+
+|  *X*               |
+| *   *              |
+| *   *              |
+| *   *              |
+|  *X*               |
+|                    |
+|                    |
+|                    |
+|                    |
+|                    |
++--------------------+
+HERE
+                  [1,0, 5,4, 1, <<'HERE'],
 +--------------------+
 |  ***               |
-| *   *              |
-| *   *              |
-| *   *              |
+| *****              |
+| *****              |
+| *****              |
 |  ***               |
 |                    |
 |                    |
@@ -496,7 +539,7 @@ HERE
                   # so 5 wide a=2.5 is x=2.16 only the last pixel
                   # or 19 wide a=9.5 is x=8.22 the second last
                   #
-                  [0,0, 5,2, <<'HERE'],
+                  [0,0, 5,2, 0, <<'HERE'],
 +--------------------+
 | ****               |
 |*    *              |
@@ -510,7 +553,21 @@ HERE
 |                    |
 +--------------------+
 HERE
-                  [0,0, 19,2, <<'HERE'],
+                  [0,0, 5,2, 1, <<'HERE'],
++--------------------+
+| ****               |
+|******              |
+| ****               |
+|                    |
+|                    |
+|                    |
+|                    |
+|                    |
+|                    |
+|                    |
++--------------------+
+HERE
+                  [0,0, 19,2, 0, <<'HERE'],
 +--------------------+
 |  ****************  |
 |**                **|
@@ -524,21 +581,29 @@ HERE
 |                    |
 +--------------------+
 HERE
+                  [0,0, 19,2, 1, <<'HERE'],
++--------------------+
+|  ****************  |
+|********************|
+|  ****************  |
+|                    |
+|                    |
+|                    |
+|                    |
+|                    |
+|                    |
+|                    |
++--------------------+
+HERE
 
                  ) {
-  foreach my $swap_x (0, 1) {
-    foreach my $swap_y (0, 1) {
+  # no swapping for ellipse() corners
+  my ($x0,$y0, $x1,$y1, $fill, $want) = @$elem;
 
-      my ($x0,$y0, $x1,$y1, $want) = @$elem;
-      if ($swap_x) { ($x0,$x1) = ($x1,$x0) }
-      if ($swap_y) { ($y0,$y1) = ($y1,$y0) }
-
-      my $image = MyGrid->new (-width => 20, -height => 10);
-      $image->ellipse ($x0,$y0, $x1,$y1, '*');
-      my $got = $image->{'str'};
-      is ("\n$got", "\n$want", "ellipse $x0,$y0, $x1,$y1");
-    }
-  }
+  my $image = MyGrid->new (-width => 20, -height => 10);
+  $image->ellipse ($x0,$y0, $x1,$y1, '*', $fill);
+  my $got = $image->{'str'};
+  is ("\n$got", "\n$want", "ellipse $x0,$y0, $x1,$y1, fill=$fill");
 }
 
 exit 0;

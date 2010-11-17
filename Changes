@@ -1,4 +1,9 @@
 
+2010/11/17 version 1.12
+
+Add ellipse() $fill parameter.
+
+
 2010/10/22 version 1.11
 
 Tweak ellipse() discriminator changeover, use rectangle() for smalls.

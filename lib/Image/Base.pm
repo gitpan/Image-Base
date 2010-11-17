@@ -1,10 +1,11 @@
 package Image::Base ;    # Documented at the __END__
 
+use 5.004 ;   # 5.004 for __PACKAGE__ special literal
 use strict ;
 
 use vars qw( $VERSION ) ;
 
-$VERSION = '1.11' ;
+$VERSION = '1.12' ;
 
 use Carp qw( croak ) ;
 use Symbol () ;
@@ -147,8 +148,8 @@ sub line { # Object method
 # The x,y coordinates are taken relative to the centre $ox,$oy, with radials
 # $a and $b half the width $x1-x0 and height $y1-$y0.  If $x1-$x0 is odd,
 # then $ox and $a are not integers but have 0.5 parts.  Starting from $x=0.5
-# and keeping that 0.5 means the final _ellipse_point() drawn xy() pixels
-# are integers.  Similarly in y.
+# and keeping that 0.5 means the final xy() pixels drawn in
+# &$ellipse_point() are integers.  Similarly for y.
 #
 # Only a few lucky pixels exactly satisfy the ellipse equation above.  For
 # the rest there's an error amount expressed as
@@ -183,35 +184,52 @@ sub line { # Object method
 #           (y-1)^2 - (y-1/2)^2 = -y + 3/4
 #
 #
+# Other Possibilities:
+#
 # The calculations could be made all-integer by counting $x and $y from 0 at
-# the bounding box edges directed inwards, rather than outwards from a
+# the bounding box edges and measuring inwards, rather than outwards from a
 # fractional centre.  E(x,y) could have a factor of 2 or 4 put through as
-# necessary (the discriminating >0 or <0 staying the same).  Rumour has it
-# E() can grow to roughly max(a^3, b^3), which fits a 32-bit signed integer
-# for up to 800 pixels or so radius, or 1600 for unsigned 32-bit, and of
-# course Perl switches to 53-bit floats automatically, which is then still
-# an exact integer up to about 200,000 pixels radius.
+# necessary, the discriminating >0 or <0 staying the same.  The d1 and d2
+# steps are at most roughly 2*max(a*b^2,b*a^2), which for a circle means
+# 2*r^3.  This fits a 32-bit signed integer for up to about 1000 pixels or
+# so, and then of course Perl switches to 53-bit floats automatically, which
+# is still an exact integer up to about 160,000 pixels radius.
 #
 # It'd be possible to draw runs of horizontal pixels with line() instead of
 # individual xy() calls.  That might help subclasses doing a block-fill for
 # a horizontal line segment.  Except only big or flat ellipses have more
-# than a few adjacent horizontal pixels.
+# than a few adjacent horizontal pixels.  Perhaps just the initial topmost
+# horizontal, using a sqrt to calculate where it crosses from the top y=b
+# down to y=b-1.
 #
-# It's possible to calculate (with a sqrt) where d1 goes positive and thus
-# the horizontal ends, if that seemed better than watching $aa*($y-0.5) vs
-# $bb *($x+1) for the end of the first loop.
+# The end o the first loop could be pre-calculated (with a sqrt), if that
+# seemed better than watching $aa*($y-0.5) vs $bb*($x+1).  The loop change
+# is where the tangent slope is steeper than -1.  Drawing a little diagram
+# shows that an x+0,y+1 downward step like in the second loop is not needed
+# until that point.
 #
-
+#      dx/dy = -x*b^2 / y*a^2 = -1             slope
+#      y = x*b^2/a^2
+#      b^2*x^2 + a^2*(b^4/a^4)*x^2 = a^2*b^2   into the ellipse equation
+#      x^2 * (1 + b^2/a^2) = a^2
+#      x = a * sqrt (a^2 / (a^2 + b^2))
+#        = a^2 / sqrt (a^2 + b^2)
+#
 
 sub ellipse { # Object method
     my $self  = shift ;
     #    my $class = ref( $self ) || $self ;
 
-    my( $x0, $y0, $x1, $y1, $colour ) = @_ ;
+    my( $x0, $y0, $x1, $y1, $colour, $fill ) = @_ ;
 
-    my $a  = abs( $x1 - $x0 ) / 2 ;
-    my $b  = abs( $y1 - $y0 ) / 2 ;
-    if ($a <= .5 || $b <= .5) {
+    # per the docs, x0,y0 top left, x1,y1 bottom right
+    # could relax that fairly easily, if desired ...
+    ### assert: $x0 <= $x1
+    ### assert: $y0 <= $y1
+
+    my ($a, $b);
+    if (($a    = ( $x1 - $x0 ) / 2) <= .5
+        || ($b = ( $y1 - $y0 ) / 2) <= .5) {
         # one or two pixels high or wide, treat as rectangle
         $self->rectangle ($x0, $y0, $x1, $y1, $colour );
         return;
@@ -225,27 +243,53 @@ sub ellipse { # Object method
     my $y  = $b ;
     ### initial: "origin $ox,$oy  start xy $x,$y"
 
-    # d1 = E(x+1,y-1/2) = (x+1)^2*b^2 + (y-1/2)^2*a^2 - a^2*b^2
-    # which for x=0,y=b is b^2 - a^2*b + a^2/4
-    # or for x=0.5,y=b  is 9/4*b^2 - ...
+    my $ellipse_point =
+      ($fill
+       ? sub {
+           ### ellipse_point fill: "$x,$y"
+           $self->line( $ox - $x, $oy + $y,
+                        $ox + $x, $oy + $y, $colour ) ;
+           $self->line( $ox - $x, $oy - $y,
+                        $ox + $x, $oy - $y, $colour ) ;
+       }
+       : sub {
+           ### ellipse_point xys: "$x,$y"
+           $self->xy( $ox + $x, $oy + $y, $colour ) ;
+           $self->xy( $ox - $x, $oy - $y, $colour ) ;
+           $self->xy( $ox + $x, $oy - $y, $colour ) ;
+           $self->xy( $ox - $x, $oy + $y, $colour ) ;
+       });
+
+    # Initially,
+    #     d1 = E(x+1,y-1/2)
+    #        = (x+1)^2*b^2 + (y-1/2)^2*a^2 - a^2*b^2
+    # which for x=0,y=b is
+    #        = b^2 - a^2*b + a^2/4
+    # or for x=0.5,y=b
+    #        = 9/4*b^2 - ...
     #
     my $d = ($x ? 2.25*$bb : $bb) - ( $aa * $b ) + ( $aa / 4 ) ;
 
-    $self->_ellipse_point( $ox, $oy, $x, $y, $colour ) ;
+    while( $y >= 1
+           && ( $aa * ( $y - 0.5 ) ) > ( $bb * ( $x + 1 ) ) ) {
 
-    while( ( $aa * ( $y - 0.5 ) ) > ( $bb * ( $x + 1 ) ) ) {
         ### assert: $d == ($x+1)**2 * $bb + ($y-.5)**2 * $aa - $aa * $bb
         if( $d < 0 ) {
+            if (! $fill) {
+                # unfilled draws each pixel, but filled waits until stepping
+                # down "--$y" and then draws whole horizontal line
+                &$ellipse_point();
+            }
             $d += ( $bb * ( ( 2 * $x ) + 3 ) ) ;
             ++$x ;
         }
         else {
+            &$ellipse_point();
             $d += ( ( $bb * ( (  2 * $x ) + 3 ) ) +
                     ( $aa * ( ( -2 * $y ) + 2 ) ) ) ;
             ++$x ;
             --$y ;
         }
-        $self->_ellipse_point( $ox, $oy, $x, $y, $colour ) ;
     }
 
     # switch to d2 = E(x+1/2,y-1) by adding E(x+1/2,y-1) - E(x+1,y-1/2)
@@ -255,6 +299,7 @@ sub ellipse { # Object method
     ### second loop at: "$x, $y"
 
     while( $y >= 1 ) {
+        &$ellipse_point();
         if( $d < 0 ) {
             $d += ( $bb * ( (  2 * $x ) + 2 ) ) +
               ( $aa * ( ( -2 * $y ) + 3 ) ) ;
@@ -265,37 +310,30 @@ sub ellipse { # Object method
             $d += ( $aa * ( ( -2 * $y ) + 3 ) ) ;
             --$y ;
         }
-        $self->_ellipse_point( $ox, $oy, $x, $y, $colour ) ;
-
         ### assert: $d == $bb*($x+0.5)**2 + $aa*($y-1)**2 - $aa*$bb
     }
-    # loop stops after drawing an _ellipse_point() at $y==0 or $y==0.5, the
-    # latter if $b has a .5 fraction
+
+    # loop ends with y=0 or y=0.5 according as the height is odd or even,
+    # leaving one or two middle rows to draw out to x0 and x1 edges
     ### assert: $y == $b - int($b)
 
-    # tail if small height large width
-    while( ++$x <= $a ) {
-        $self->_ellipse_point( $ox, $oy, $x, $y, $colour ) ;
+    if ($fill) {
+        ### middle fill: "y ".($oy-$y)." to ".($oy+$y)
+        $self->rectangle( $x0, $oy - $y,
+                          $x1, $oy + $y,
+                          $colour, 1 ) ;
+    } else {
+        # middle tails from $x out to the left/right edges
+        # $x can be several pixels less than $a if small height large width
+        ### tail: "y=$y, left $x0 to ".($ox-$x).", right ".($ox+$x)." to $x1"
+        $self->rectangle( $x0,      $oy - $y,  # left
+                          $ox - $x, $oy + $y,
+                          $colour, 1 ) ;
+        $self->rectangle( $ox + $x, $oy - $y,  # right
+                          $x1,      $oy + $y,
+                          $colour, 1 ) ;
     }
-    # $x started from the possible 0.5 fraction part of $a, so having
-    # stepped up by 1s it will reach $a exactly
-    ### assert: $x == $a+1
 }
-
-
-sub _ellipse_point { # Object method 
-    my $self  = shift ; 
-#    my $class = ref( $self ) || $self ;
-
-    my( $ox, $oy, $rx, $ry, $colour ) = @_ ;
-    ### _ellipse_point: "$rx,$ry"
-
-    $self->xy( $ox + $rx, $oy + $ry, $colour ) ;
-    $self->xy( $ox - $rx, $oy - $ry, $colour ) ;
-    $self->xy( $ox + $rx, $oy - $ry, $colour ) ;
-    $self->xy( $ox - $rx, $oy + $ry, $colour ) ;
-}
-
 
 sub rectangle { # Object method
   my ($self, $x0, $y0, $x1, $y1, $colour, $fill) = @_;
@@ -344,7 +382,7 @@ Image::Base - base class for loading, manipulating and saving images.
 =head1 SYNOPSIS
 
 This class should not be used directly.  Known inheritors are Image::Xbm and
-Image::Xpm (and see L</SEE ALSO> below).
+Image::Xpm and in see L</SEE ALSO> below.
 
     use Image::Xpm ;
 
@@ -402,9 +440,11 @@ Draw a line from point ($x0,$y0) to point ($x1,$y1) in colour $colour.
 =head2 ellipse()
 
     $i->ellipse( $x0, $y0, $x1, $y1, $colour ) ;
+    $i->ellipse( $x0, $y0, $x1, $y1, $colour, $fill ) ;
 
 Draw an oval enclosed by the rectangle whose top left is ($x0,$y0) and bottom
-right is ($x1,$y1) using a line colour of $colour.
+right is ($x1,$y1) using a line colour of $colour.  If optional argument
+C<$fill> is true then the ellipse is filled.
 
 =head2 rectangle()
 
@@ -487,6 +527,35 @@ Virtual - must be overridden. Expected to provide the following functionality:
 
 Save the image using the name given, or if none is given save the image using
 the name in the C<-file> attribute. The image is saved in xpm format.
+
+=head1 ALGORITHMS
+
+Sloping lines are drawn by a basic Bressenham line drawing algorithm with
+integer-only calculations.  It ends up drawing the same pixels no matter
+which way around the two endpoints are passed.
+
+Would there be merit in rounding odd numbers of pixels according to which
+way around line ends are given?  Eg. a line 0,0 to 4,1 might do 2 pixels on
+y=0 and 3 on y=1, but 4,1 to 0,0 the other way around.  Or better to have
+consistency either way around?  For reference, in the X11 drawing model the
+order of the ends doesn't matter for "wide" lines, but for
+implementation-dependent "thin" lines it's merely encouraged, not required.
+
+Ellipses are drawn with the midpoint algorithm which effectively chooses
+between two points x,y and x,y-1 according to whether the position x,y-0.5 is
+inside or outside the ellipse (and similarly x+0.5,y on the near-vertical
+parts).
+
+The current ellipse code ends up with 0.5's in the values, which means
+floating point, but still exact since binary fractions like 0.5 are exactly
+representable.  Some rearrangement and factors of 2 could make it
+all-integer.  The "discriminator" in the calculation may exceed 53-bits of
+float mantissa at around 160,000 pixels wide or high, possibly affecting the
+accuracy of the pixels chosen (but should be no worse than that).
+
+The subclasses like GD or PNGwriter which are front-ends to other drawing
+libraries don't necessarily use these base algorithms but can be expected to
+something within the given line endpoints or ellipse bounding box.
 
 =head1 SEE ALSO
 

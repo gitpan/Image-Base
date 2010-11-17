@@ -6,7 +6,9 @@ MANIFEST
 Makefile.PL
 README
 LGPL-3
-devel/symmetry.pl
 devel/ellipse.pl
+devel/misc.pl
+devel/overflow.pl
+devel/symmetry.pl
 META.yml                                 Module meta-data (added by MakeMaker)
 SIGNATURE                                Public-key signature (added by MakeMaker)
