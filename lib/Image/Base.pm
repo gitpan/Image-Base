@@ -5,7 +5,7 @@ use strict ;
 
 use vars qw( $VERSION ) ;
 
-$VERSION = '1.12' ;
+$VERSION = '1.13' ;
 
 use Carp qw( croak ) ;
 use Symbol () ;
@@ -381,6 +381,12 @@ Image::Base - base class for loading, manipulating and saving images.
 
 =head1 SYNOPSIS
 
+ # base class only
+ package My::Image::Class;
+ use base 'Image::Base';
+
+=head1 DESCRIPTION
+
 This class should not be used directly.  Known inheritors are Image::Xbm and
 Image::Xpm and in see L</SEE ALSO> below.
 
@@ -390,6 +396,18 @@ Image::Xpm and in see L</SEE ALSO> below.
     $i->line( 1, 1, 3, 7, 'red' ) ;
     $i->ellipse( 3, 3, 6, 7, '#ff00cc' ) ;
     $i->rectangle( 4, 2, 9, 8, 'blue' ) ;
+
+Subclasses like C<Image::Xpm> and C<Image::Xbm> are stand-alone Perl code
+implementations of the respective formats.  They're good for drawing and
+manipulating image files with a modest amount of code and dependencies.
+
+Other inheritors like C<Image::Base::GD> are front-ends to big image
+libraries.  They can be handy for pointing generic C<Image::Base> style code
+at a choice of modules and their various file formats.  Some like
+C<Image::Base::X11::Protocol::Drawable> even go to a window etc for direct
+display.
+
+=head2 More Methods
 
 If you want to create your own algorithms to manipulate images in terms of
 (x,y,colour) then you could extend this class (without changing the file),
@@ -412,7 +430,7 @@ Now if you C<require> mylibrary.pl after you've C<use>d Image::Xpm or any
 other Image::Base inheriting classes then all these classes will inherit your
 C<mytransform()> method.
 
-=head1 DESCRIPTION
+=head1 FUNCTIONS
 
 =head2 new_from_image()
 
@@ -528,11 +546,59 @@ Virtual - must be overridden. Expected to provide the following functionality:
 Save the image using the name given, or if none is given save the image using
 the name in the C<-file> attribute. The image is saved in xpm format.
 
+=head2 add_colours()
+
+Add colours to the image palette (if applicable).
+
+    $i->add_colours( $name, $name, ...)
+
+The drawing functions add colours as necessary, so this is just a way to
+pre-load the palette.
+
+C<add_colours> does nothing for images which don't have a palette or can't
+take advantage of pre-loading colour names.  The base code in C<Image::Base>
+is a no-op.
+
+=head1 ATTRIBUTES
+
+The attributes for C<new>, C<get> and C<set> are up to the subclasses, but
+the common settings, when available, include
+
+=head2 C<-width> and C<-height> (integers)
+
+The size of the image.  These might be create-only with a size given to
+C<new> and then fixed.  If the image can be resized then C<set> of C<-width>
+and/or C<-height> does a resize.
+
+=head2 C<-file> (string)
+
+Set by C<new> reading a file, or C<load> or C<save> if passed a filename, or
+just by C<set> in readiness for a future C<load> or C<save>.
+
+=head2 C<-hotx> and C<-hoty> (integers, or maybe -1 or maybe C<undef>)
+
+The coordinates of the "hotspot" position.  For images which can be a mouse
+cursor or similar this is the position of the active pixel for clicking etc.
+Eg. XPM and ICO (or CUR rather) formats have hotspot positions.
+
+=head2 C<-zlib_compression> (integer -1 to 9, or C<undef>)
+
+The compression level for images which use Zlib, such as PNG.  0 is no
+compression, up to 9 for maximum compression.  -1 is the Zlib compiled-in
+default (usually 6).  C<undef> means no setting, for an image library
+default if it has one, or the Zlib default.
+
+For reference, the PNG format doesn't record a compression level used, so
+C<-zlib_compression> might be C<set> for a C<save>, but generally won't read
+back in a C<load>.
+
 =head1 ALGORITHMS
 
+=head2 Lines
+
 Sloping lines are drawn by a basic Bressenham line drawing algorithm with
-integer-only calculations.  It ends up drawing the same pixels no matter
-which way around the two endpoints are passed.
+integer-only calculations.  It ends up drawing the same set of pixels no
+matter which way around the two endpoints are passed.
 
 Would there be merit in rounding odd numbers of pixels according to which
 way around line ends are given?  Eg. a line 0,0 to 4,1 might do 2 pixels on
@@ -541,21 +607,25 @@ consistency either way around?  For reference, in the X11 drawing model the
 order of the ends doesn't matter for "wide" lines, but for
 implementation-dependent "thin" lines it's merely encouraged, not required.
 
-Ellipses are drawn with the midpoint algorithm which effectively chooses
-between two points x,y and x,y-1 according to whether the position x,y-0.5 is
-inside or outside the ellipse (and similarly x+0.5,y on the near-vertical
-parts).
+=head2 Ellipses
+
+Ellipses are drawn with the midpoint algorithm.  It chooses between two
+points x,y and x,y-1 according to whether the position x,y-0.5 is inside or
+outside the ellipse (and similarly x+0.5,y on the near-vertical parts).
 
 The current ellipse code ends up with 0.5's in the values, which means
-floating point, but still exact since binary fractions like 0.5 are exactly
-representable.  Some rearrangement and factors of 2 could make it
+floating point, but is still exact since binary fractions like 0.5 are
+exactly representable.  Some rearrangement and factors of 2 could make it
 all-integer.  The "discriminator" in the calculation may exceed 53-bits of
 float mantissa at around 160,000 pixels wide or high, possibly affecting the
-accuracy of the pixels chosen (but should be no worse than that).
+accuracy of the pixels chosen, but should be no worse than that.
+
+=head2 Image Libraries
 
 The subclasses like GD or PNGwriter which are front-ends to other drawing
-libraries don't necessarily use these base algorithms but can be expected to
-something within the given line endpoints or ellipse bounding box.
+libraries don't necessarily use these base algorithms, but can be expected
+to something sensible within the given line endpoints or ellipse bounding
+box.
 
 =head1 SEE ALSO
 
@@ -564,13 +634,17 @@ L<Image::Xbm>,
 L<Image::Pbm>,
 L<Image::Base::GD>,
 L<Image::Base::PNGwriter>,
-L<Image::Base::Multiplex>,
-L<Image::Base::Text>
+L<Image::Base::Text>,
+L<Image::Base::Multiplex>
 
 L<Image::Base::Gtk2::Gdk::Drawable>,
 L<Image::Base::Gtk2::Gdk::Pixbuf>,
 L<Image::Base::Gtk2::Gdk::Pixmap>,
-L<Image::Base::Gtk2::Gdk::Window>,
+L<Image::Base::Gtk2::Gdk::Window>
+
+L<Image::Base::Prima::Drawable>,
+L<Image::Base::Prima::Image>
+
 L<Image::Base::X11::Protocol::Drawable>,
 L<Image::Base::X11::Protocol::Pixmap>,
 L<Image::Base::X11::Protocol::Window>
@@ -584,7 +658,7 @@ please include the word 'imagebase' in the subject line.
 
 Copyright (c) Mark Summerfield 2000. All Rights Reserved.
 
-Copyright (c) Kevin Ryde 2010.
+Copyright (c) Kevin Ryde 2010, 2011.
 
 This module may be used/distributed/modified under the LGPL. 
 

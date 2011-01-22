@@ -1,4 +1,10 @@
 
+2010/01/17 version 1.13
+
+Add add_colours() base method.
+Document some common attributes like -file.
+
+
 2010/11/17 version 1.12
 
 Add ellipse() $fill parameter.

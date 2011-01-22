@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Image-Base
-version:            1.12
+version:            1.13
 abstract:           Base class for image manipulation
 author:
     - Mark Summerfield <summer@perlpress.com>
