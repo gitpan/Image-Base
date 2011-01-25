@@ -5,7 +5,7 @@ use strict ;
 
 use vars qw( $VERSION ) ;
 
-$VERSION = '1.13' ;
+$VERSION = '1.14' ;
 
 use Carp qw( croak ) ;
 use Symbol () ;
@@ -368,6 +368,10 @@ sub rectangle { # Object method
       }
     }
   }
+}
+
+sub add_colours {
+  # my ($self, $colour, $colour, ...) = @_;
 }
 
 1 ;
