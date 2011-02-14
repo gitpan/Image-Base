@@ -5,7 +5,7 @@ use strict ;
 
 use vars qw( $VERSION ) ;
 
-$VERSION = '1.14' ;
+$VERSION = '1.15' ;
 
 use Carp qw( croak ) ;
 use Symbol () ;
@@ -652,6 +652,8 @@ L<Image::Base::Prima::Image>
 L<Image::Base::X11::Protocol::Drawable>,
 L<Image::Base::X11::Protocol::Pixmap>,
 L<Image::Base::X11::Protocol::Window>
+
+C<http://user42.tuxfamily.org/image-base/index.html>
 
 =head1 AUTHOR
 

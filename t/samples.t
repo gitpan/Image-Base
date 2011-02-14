@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# Copyright 2010 Kevin Ryde
+# Copyright 2010, 2011 Kevin Ryde
 
 # This file is part of Image-Base.
 #
@@ -18,7 +18,10 @@
 # along with Image-Base.  If not, see <http://www.gnu.org/licenses/>.
 
 use strict;
-use Test::More tests => 81;
+use Test;
+BEGIN {
+  plan tests => 81;
+}
 
 # whether to mark repeat-drawn pixels as "X" (repeat drawn pixels being
 # wasteful and undesirable if they can be avoided reasonably easily).
@@ -175,7 +178,7 @@ HERE
     my $image = MyGrid->new (-width => 20, -height => 10);
     $image->line ($x0,$y0, $x1,$y1, '*');
     my $got = $image->{'str'};
-    is ("\n$got", "\n$want", "line $x0,$y0, $x1,$y1");
+    ok ("\n$got", "\n$want", "line $x0,$y0, $x1,$y1");
 
     ($x0,$y0, $x1,$y1) = ($x1,$y1, $x0,$y0);
   }
@@ -412,7 +415,7 @@ HERE
       my $image = MyGrid->new (-width => 20, -height => 10);
       $image->rectangle ($x0,$y0, $x1,$y1, '*', $fill);
       my $got = $image->{'str'};
-      is ("\n$got", "\n$want", "rectangle $x0,$y0, $x1,$y1, fill=$fill");
+      ok ("\n$got", "\n$want", "rectangle $x0,$y0, $x1,$y1, fill=$fill");
     }
   }
 }
@@ -603,7 +606,7 @@ HERE
   my $image = MyGrid->new (-width => 20, -height => 10);
   $image->ellipse ($x0,$y0, $x1,$y1, '*', $fill);
   my $got = $image->{'str'};
-  is ("\n$got", "\n$want", "ellipse $x0,$y0, $x1,$y1, fill=$fill");
+  ok ("\n$got", "\n$want", "ellipse $x0,$y0, $x1,$y1, fill=$fill");
 }
 
 exit 0;

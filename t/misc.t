@@ -18,7 +18,10 @@
 # along with Image-Base.  If not, see <http://www.gnu.org/licenses/>.
 
 use strict;
-use Test::More tests => 5;
+use Test;
+BEGIN {
+  plan tests => 5;
+}
 
 {
   package MyTestImage;
@@ -34,16 +37,20 @@ use Test::More tests => 5;
 #------------------------------------------------------------------------------
 # VERSION
 
-my $want_version = 1.14;
-is ($Image::Base::VERSION,
-    $want_version, 'VERSION variable');
-is (Image::Base->VERSION,
-    $want_version, 'VERSION class method');
+my $want_version = 1.15;
+ok ($Image::Base::VERSION,
+    $want_version,
+    'VERSION variable');
+ok (Image::Base->VERSION,
+    $want_version,
+    'VERSION class method');
 
 ok (eval { Image::Base->VERSION($want_version); 1 },
+    1,
     "VERSION class check $want_version");
 my $check_version = $want_version + 1000;
 ok (! eval { Image::Base->VERSION($check_version); 1 },
+    1,
     "VERSION class check $check_version");
 
 
@@ -54,7 +61,9 @@ ok (! eval { Image::Base->VERSION($check_version); 1 },
   # just that the method exists
   my $image = MyTestImage->new;
   $image->add_colours ('red','#112233');
-  ok ($image->can('add_colours'), 'add_colours() exists');
+  ok (defined $image->can('add_colours'),
+      1,
+      'add_colours() exists');
 }
 
 exit 0;
