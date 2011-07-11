@@ -5,10 +5,9 @@ use strict ;
 
 use vars qw( $VERSION ) ;
 
-$VERSION = '1.15' ;
+$VERSION = '1.16' ;
 
 use Carp qw( croak ) ;
-use Symbol () ;
 
 # uncomment this to run the ### lines
 #use Smart::Comments '###';
@@ -370,6 +369,102 @@ sub rectangle { # Object method
   }
 }
 
+sub diamond {
+  my ($self, $x1,$y1, $x2,$y2, $colour, $fill) = @_;
+  ### diamond(): "$x1,$y1, $x2,$y2, $colour fill=".($fill||0)
+
+  ### assert: $x2 >= $x1
+  ### assert: $y2 >= $y1
+
+  my $w = $x2 - $x1;
+  my $h = $y2 - $y1;
+  if ($w < 2 || $h < 2) {
+    $self->rectangle ($x1,$y1, $x2,$y2, $colour, 1);
+    return;
+  }
+  $w = int ($w / 2);
+  $h = int ($h / 2);
+  my $x = $w;  # middle
+  my $y = 0;   # top
+
+  ### $w
+  ### $h
+  ### x1+x: $x1+$w
+  ### x2-x: $x2-$w
+  ### y1+y: $y1+$h
+  ### y2-y: $y2-$h
+
+  my $draw;
+  if ($fill) {
+    $draw = sub {
+      ### draw across: "$x,$y"
+      $self->line ($x1+$x,$y1+$y, $x2-$x,$y1+$y, $colour); # upper
+      $self->line ($x1+$x,$y2-$y, $x2-$x,$y2-$y, $colour); # lower
+    };
+  } else {
+    $draw = sub {
+      ### draw: "$x,$y"
+      $self->xy ($x1+$x,$y1+$y, $colour); # upper left
+      $self->xy ($x2-$x,$y1+$y, $colour); # upper right
+
+      $self->xy ($x1+$x,$y2-$y, $colour); # lower left
+      $self->xy ($x2-$x,$y2-$y, $colour); # lower right
+    };
+  }
+
+  if ($w > $h) {
+    ### shallow ...
+
+    my $rem = int($w/2) - $w;
+    ### $rem
+
+    while ($x > 0) {
+      ### at: "x=$x  rem=$rem"
+
+      if (($rem += $h) >= 0) {
+        &$draw();
+        $y++;
+        $rem -= $w;
+        $x--;
+      } else {
+        if (! $fill) { &$draw() }
+        $x--;
+      }
+    }
+
+  } else {
+    ### steep ...
+
+    # when $h is odd bias towards pointier at the narrower top/bottom ends
+    my $rem = int(($h-1)/2) - $h;
+    ### $rem
+
+    while ($y < $h) {
+      ### $rem
+      &$draw();
+
+      if (($rem += $w) >= 0) {
+        $rem -= $h;
+        $x--;
+        ### x inc to: "x=$x  rem $rem"
+      }
+      $y++;
+    }
+  }
+
+  ### final: "$x,$y"
+
+  # middle row if $h odd, or middle two rows if $h even
+  # done explicitly rather than with &$draw() so as not to draw the middle
+  # row twice when $h odd
+  if ($fill) {
+    $self->rectangle ($x1,$y1+$h, $x2,$y2-$h, $colour, 1);
+  } else {
+    $self->rectangle ($x1,$y1+$h, $x1+$x,$y2-$h, $colour, 1);  # left
+    $self->rectangle ($x2-$x,$y1+$h, $x2,$y2-$h, $colour, 1);  # right
+  }
+}
+
 sub add_colours {
   # my ($self, $colour, $colour, ...) = @_;
 }
@@ -459,6 +554,11 @@ type but with some different characteristics, e.g.
 
 Draw a line from point ($x0,$y0) to point ($x1,$y1) in colour $colour.
 
+                ***                         
+           *****                            
+       ****                                 
+    ***                                     
+
 =head2 ellipse()
 
     $i->ellipse( $x0, $y0, $x1, $y1, $colour ) ;
@@ -468,13 +568,41 @@ Draw an oval enclosed by the rectangle whose top left is ($x0,$y0) and bottom
 right is ($x1,$y1) using a line colour of $colour.  If optional argument
 C<$fill> is true then the ellipse is filled.
 
+       *********                            
+     **         **                          
+    *             *                         
+     **         **                          
+       *********                            
+
 =head2 rectangle()
 
+    $i->rectangle( $x0, $y0, $x1, $y1, $colour ) ;
     $i->rectangle( $x0, $y0, $x1, $y1, $colour, $fill ) ;
 
 Draw a rectangle whose top left is ($x0,$y0) and bottom right is ($x1,$y1)
 using a line colour of $colour. If C<$fill> is true then the rectangle will be
 filled.
+
+    ***************                         
+    *             *                         
+    *             *                         
+    *             *                         
+    ***************                         
+
+=head2 diamond()
+
+    $i->diamond( $x0, $y0, $x1, $y1, $colour ) ;
+    $i->diamond( $x0, $y0, $x1, $y1, $colour, $fill ) ;
+
+Draw a diamond shape within the rectangle top left ($x0,$y0) and bottom
+right ($x1,$y1) using a $colour.  If optional argument C<$fill> is true
+then the diamond is filled.  For example
+
+           ***        
+       ****   ****
+    ***           ***
+       ****   ****
+           ***        
 
 =head2 new()
 
@@ -565,36 +693,36 @@ is a no-op.
 
 =head1 ATTRIBUTES
 
-The attributes for C<new>, C<get> and C<set> are up to the subclasses, but
-the common settings, when available, include
+The attributes for C<new()>, C<get()> and C<set()> are up to the subclasses,
+but the common settings, when available, include
 
 =head2 C<-width> and C<-height> (integers)
 
-The size of the image.  These might be create-only with a size given to
-C<new> and then fixed.  If the image can be resized then C<set> of C<-width>
-and/or C<-height> does a resize.
+The size of the image.  These might be create-only with C<new()> taking a
+size which is then fixed.  If the image can be resized then C<set()> of
+C<-width> and/or C<-height> does a resize.
 
 =head2 C<-file> (string)
 
-Set by C<new> reading a file, or C<load> or C<save> if passed a filename, or
-just by C<set> in readiness for a future C<load> or C<save>.
+Set by C<new()> reading a file, or C<load()> or C<save()> if passed a
+filename, or just by C<set()> ready for a future C<load()> or C<save()>.
 
 =head2 C<-hotx> and C<-hoty> (integers, or maybe -1 or maybe C<undef>)
 
 The coordinates of the "hotspot" position.  For images which can be a mouse
 cursor or similar this is the position of the active pixel for clicking etc.
-Eg. XPM and ICO (or CUR rather) formats have hotspot positions.
+For example XPM and CUR (cursor form of ICO) formats have hotspot positions.
 
 =head2 C<-zlib_compression> (integer -1 to 9, or C<undef>)
 
 The compression level for images which use Zlib, such as PNG.  0 is no
-compression, up to 9 for maximum compression.  -1 is the Zlib compiled-in
-default (usually 6).  C<undef> means no setting, for an image library
-default if it has one, or the Zlib default.
+compression, 9 is maximum compression.  -1 is the Zlib compiled-in default
+(usually 6).  C<undef> means no setting to use an image library default if
+it has one, or the Zlib default.
 
 For reference, the PNG format doesn't record a compression level used, so
-C<-zlib_compression> might be C<set> for a C<save>, but generally won't read
-back in a C<load>.
+for it C<-zlib_compression> can be C<set()> for a C<save()>, but generally
+won't read back in a C<load()>.
 
 =head1 ALGORITHMS
 
@@ -637,11 +765,16 @@ L<Image::Xpm>,
 L<Image::Xbm>,
 L<Image::Pbm>,
 L<Image::Base::GD>,
+L<Image::Base::Imager>,
+L<Image::Base::Magick>,
 L<Image::Base::PNGwriter>,
+L<Image::Base::SVG>,
+L<Image::Base::SVGout>,
 L<Image::Base::Text>,
 L<Image::Base::Multiplex>
 
 L<Image::Base::Gtk2::Gdk::Drawable>,
+L<Image::Base::Gtk2::Gdk::Image>,
 L<Image::Base::Gtk2::Gdk::Pixbuf>,
 L<Image::Base::Gtk2::Gdk::Pixmap>,
 L<Image::Base::Gtk2::Gdk::Window>

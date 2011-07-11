@@ -37,7 +37,7 @@ BEGIN {
 #------------------------------------------------------------------------------
 # VERSION
 
-my $want_version = 1.15;
+my $want_version = 1.16;
 ok ($Image::Base::VERSION,
     $want_version,
     'VERSION variable');

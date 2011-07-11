@@ -1,5 +1,5 @@
 This file contains message digests of all files listed in MANIFEST,
-signed via the Module::Signature module, version 0.66.
+signed via the Module::Signature module, version 0.68.
 
 To verify the content in this distribution, first make sure you have
 Module::Signature installed, then type:
@@ -14,24 +14,24 @@ not run its Makefile.PL or Build.PL.
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
-SHA1 62b9e5cbae298eef2ab0013854448d5a0714007d Changes
+SHA1 41c3defbd5a369406b9b587678874da898e9f451 Changes
 SHA1 f45ee1c765646813b442ca58de72e20a64a7ddba LGPL-3
 SHA1 a91d65bd92f00ec5ad07b549935cc05256ee19ca MANIFEST
-SHA1 a9e3d05c1a3841e46d199a443da6cb661637d0e6 META.yml
+SHA1 b886e11204ad019d5ee0e3e0609e54a4600d884f META.yml
 SHA1 791191274294f77e24925d7046c267f23237d527 Makefile.PL
 SHA1 a07d01541a0dfa66c6fc71eacd5fd7e772700542 README
 SHA1 7a9126ab21861578e2df22d301007f9380e4405c devel/ellipse.pl
 SHA1 52f808c108014b75b5036d24e9102d61154e3811 devel/misc.pl
 SHA1 e7f0c1958a4f5c609a08eb83229b4d50743d57d1 devel/overflow.pl
 SHA1 b42c606d6f690c04ff766d0742292cf90a2a21ea devel/symmetry.pl
-SHA1 f833291d9bf695d76416192491cd167316ae5fd9 lib/Image/Base.pm
+SHA1 8fceffeb2692c489312fce2838f11397db7e89cb lib/Image/Base.pm
 SHA1 2efe7bbb8a8636612732b839a22e01a5aaf66771 t/base.t
-SHA1 cd9c2141e2b43e66a8443c9da911c7b71e606842 t/misc.t
-SHA1 82ab55277d100d65042c0e44f9fac9b9268ffc9a t/samples.t
+SHA1 0cf08a89f9ea96dff91e1abca95143e28c4a3625 t/misc.t
+SHA1 c18562dd534bc160efb55c4495db041a9366366a t/samples.t
 -----BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.10 (GNU/Linux)
+Version: GnuPG v1.4.11 (GNU/Linux)
 
-iD8DBQFNWaq+LFMCIV9q3ToRAnC7AJ0aeiYnW2XI2DSIUCgO4fj071mUxgCfadqK
-77z8Qe934ABnYBm/4iGWlYE=
-=eFzK
+iD8DBQFOGpJGLFMCIV9q3ToRAlRFAJ9uK8A7m6nvkHbDBeYLKAd5rilU2gCeOz8b
+/OsyhRNgOeBTG7Mz0WaZY88=
+=q+pJ
 -----END PGP SIGNATURE-----

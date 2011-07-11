@@ -1,4 +1,8 @@
 
+2010/07/10 version 1.16
+
+New diamond() method.
+
 2010/02/15 version 1.15
 
 Tests use plain Test.pm
@@ -24,7 +28,6 @@ Tweak ellipse() discriminator changeover, use rectangle() for smalls.
 
 Enhance rectangle() unfilled to not overlap drawn pixels.
 
-
 2010/10/04 version 1.09
 
 Fix ellipse() on even width or height.
@@ -32,7 +35,6 @@ Fix ellipse() on even width or height.
     - helps drawing of right/bottom edges depending how subclasses rounded
 Fix ellipse() horizontal ends when small height and big width.
 Docs cross reference modules extending Image::Base.
-
 
 2010/09/18 version 1.08
 
