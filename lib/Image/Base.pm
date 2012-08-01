@@ -5,7 +5,7 @@ use strict ;
 
 use vars qw( $VERSION ) ;
 
-$VERSION = '1.16' ;
+$VERSION = '1.17' ;
 
 use Carp qw( croak ) ;
 
@@ -342,8 +342,6 @@ sub rectangle { # Object method
     $self->line( $x0, $y0, $x1, $y1, $colour ) ;
 
   } else {
-    ( $y0, $y1 ) = ( $y1, $y0 ) if $y0 > $y1 ;
-
     if ($fill) {
       for( my $y = $y0 ; $y <= $y1 ; $y++ ) {
         $self->line( $x0, $y, $x1, $y, $colour ) ;
@@ -486,8 +484,9 @@ Image::Base - base class for loading, manipulating and saving images.
 
 =head1 DESCRIPTION
 
-This class should not be used directly.  Known inheritors are Image::Xbm and
-Image::Xpm and in see L</SEE ALSO> below.
+This is a base class for image.  It shouldn't be used directly.  Known
+inheritors are C<Image::Xbm> and C<Image::Xpm> and in see L</SEE ALSO>
+below.
 
     use Image::Xpm ;
 
@@ -502,7 +501,7 @@ manipulating image files with a modest amount of code and dependencies.
 
 Other inheritors like C<Image::Base::GD> are front-ends to big image
 libraries.  They can be handy for pointing generic C<Image::Base> style code
-at a choice of modules and their various file formats.  Some like
+at a choice of modules and supported file formats.  Some inheritors like
 C<Image::Base::X11::Protocol::Drawable> even go to a window etc for direct
 display.
 
@@ -645,7 +644,7 @@ See C<xy> get/set colours of the image itself.
 Virtual - must be overridden. Expected to provide the following functionality:
 
     $i->xy( 4, 11, '#123454' ) ;    # Set the colour at point 4,11
-    my $v = $i->xy( 9, 17 ) ;       # Get the colour at point 9,17
+    my $colour = $i->xy( 9, 17 ) ;  # Get the colour at point 9,17
 
 Get/set colours using x, y coordinates; coordinates start at 0. 
 
@@ -665,8 +664,8 @@ Virtual - must be overridden. Expected to provide the following functionality:
     $i->load ;
     $i->load( 'test.xpm' ) ;
 
-Load the image whose name is given, or if none is given load the image whose
-name is in the C<-file> attribute.
+Load the image from the C<-file> attribute filename.  Or if a filename
+parameter is given then set C<-file> to that name and load it.
 
 =head2 save()
 
@@ -675,19 +674,22 @@ Virtual - must be overridden. Expected to provide the following functionality:
     $i->save ;
     $i->save( 'test.xpm' ) ;
 
-Save the image using the name given, or if none is given save the image using
-the name in the C<-file> attribute. The image is saved in xpm format.
+Save the image to the C<-file> attribute filename.  Or if a filename
+parameter is given then set C<-file> to that name and save to there.
+
+The save format depends on the C<Image::Base> subclass.  Some implement a
+C<-file_format> attribute if multiple formats can be saved.
 
 =head2 add_colours()
 
-Add colours to the image palette (if applicable).
+Add colours to the image palette, if applicable.
 
     $i->add_colours( $name, $name, ...)
 
 The drawing functions add colours as necessary, so this is just a way to
 pre-load the palette.
 
-C<add_colours> does nothing for images which don't have a palette or can't
+C<add_colours()> does nothing for images which don't have a palette or can't
 take advantage of pre-loading colour names.  The base code in C<Image::Base>
 is a no-op.
 
@@ -696,33 +698,55 @@ is a no-op.
 The attributes for C<new()>, C<get()> and C<set()> are up to the subclasses,
 but the common settings, when available, include
 
-=head2 C<-width> and C<-height> (integers)
+=over
+
+=item C<-width> (integers)
+
+=item C<-height>
 
 The size of the image.  These might be create-only with C<new()> taking a
 size which is then fixed.  If the image can be resized then C<set()> of
 C<-width> and/or C<-height> does a resize.
 
-=head2 C<-file> (string)
+=item C<-file> (string)
 
 Set by C<new()> reading a file, or C<load()> or C<save()> if passed a
 filename, or just by C<set()> ready for a future C<load()> or C<save()>.
 
-=head2 C<-hotx> and C<-hoty> (integers, or maybe -1 or maybe C<undef>)
+=item C<-file_format> (string)
 
-The coordinates of the "hotspot" position.  For images which can be a mouse
-cursor or similar this is the position of the active pixel for clicking etc.
-For example XPM and CUR (cursor form of ICO) formats have hotspot positions.
+The name of the file format loaded or to save as.  This is generally an
+abbreviation like "XPM", set by C<load()> or C<set()> and then used by
+C<save()>.
 
-=head2 C<-zlib_compression> (integer -1 to 9, or C<undef>)
+=item C<-hotx> (integers, or maybe -1 or maybe C<undef>)
+
+=item C<-hoty>
+
+The coordinates of the "hotspot" position.  Images which can be a mouse
+cursor or similar have a position within the image which is the active pixel
+for clicking etc.  For example XPM and CUR (cursor form of ICO) formats have
+hotspot positions.
+
+=item C<-zlib_compression> (integer -1 to 9, or C<undef>)
 
 The compression level for images which use Zlib, such as PNG.  0 is no
 compression, 9 is maximum compression.  -1 is the Zlib compiled-in default
 (usually 6).  C<undef> means no setting to use an image library default if
 it has one, or the Zlib default.
 
-For reference, the PNG format doesn't record a compression level used, so
-for it C<-zlib_compression> can be C<set()> for a C<save()>, but generally
-won't read back in a C<load()>.
+For reference, PNG format doesn't record the compression level used in the
+file, so for it C<-zlib_compression> can be C<set()> to control a C<save()>,
+but generally won't read back from a C<load()>.
+
+=item C<-quality_percent> (integer 0 to 100, or C<undef>)
+
+The quality level for saving lossy image formats such as JPEG.  0 is the
+worst quality, 100 is the best.  Lower quality should mean a smaller file,
+but fuzzier.  C<undef> means no setting which gives some image library
+default.
+
+=back
 
 =head1 ALGORITHMS
 
@@ -737,27 +761,38 @@ way around line ends are given?  Eg. a line 0,0 to 4,1 might do 2 pixels on
 y=0 and 3 on y=1, but 4,1 to 0,0 the other way around.  Or better to have
 consistency either way around?  For reference, in the X11 drawing model the
 order of the ends doesn't matter for "wide" lines, but for
-implementation-dependent "thin" lines it's merely encouraged, not required.
+implementation-dependent "thin" lines it's only encouraged, not required.
 
 =head2 Ellipses
 
-Ellipses are drawn with the midpoint algorithm.  It chooses between two
-points x,y and x,y-1 according to whether the position x,y-0.5 is inside or
-outside the ellipse (and similarly x+0.5,y on the near-vertical parts).
+Ellipses are drawn with the midpoint ellipse algorithm.  This algorithm
+chooses between points x,y or x,y-1 according to whether the position
+x,y-0.5 is inside or outside the ellipse (and similarly x+0.5,y on the
+vertical parts).
 
 The current ellipse code ends up with 0.5's in the values, which means
 floating point, but is still exact since binary fractions like 0.5 are
 exactly representable.  Some rearrangement and factors of 2 could make it
 all-integer.  The "discriminator" in the calculation may exceed 53-bits of
-float mantissa at around 160,000 pixels wide or high, possibly affecting the
+float mantissa at around 160,000 pixels wide or high.  That might affect the
 accuracy of the pixels chosen, but should be no worse than that.
+
+=head2 Diamond
+
+The current code draws a diamond with the Bressenham line algorithm along
+each side.  Just one line is calculated and is then replicated to the four
+sides, which ensures the result is symmetric.  Rounding in the line (when
+width not a multiple or height, or vice versa) is biased towards making the
+pointier vertices narrower.  That tends to look better, especially when the
+diamond is small.
 
 =head2 Image Libraries
 
 The subclasses like GD or PNGwriter which are front-ends to other drawing
 libraries don't necessarily use these base algorithms, but can be expected
 to something sensible within the given line endpoints or ellipse bounding
-box.
+box.  (Among the image libraries it's surprising how variable the quality of
+the ellipse drawing is.)
 
 =head1 SEE ALSO
 
@@ -766,6 +801,7 @@ L<Image::Xbm>,
 L<Image::Pbm>,
 L<Image::Base::GD>,
 L<Image::Base::Imager>,
+L<Image::Base::Imlib2>,
 L<Image::Base::Magick>,
 L<Image::Base::PNGwriter>,
 L<Image::Base::SVG>,
@@ -782,6 +818,13 @@ L<Image::Base::Gtk2::Gdk::Window>
 L<Image::Base::Prima::Drawable>,
 L<Image::Base::Prima::Image>
 
+L<Image::Base::Tk::Canvas>,
+L<Image::Base::Tk::Photo>
+
+L<Image::Base::Wx::Bitmap>,
+L<Image::Base::Wx::DC>,
+L<Image::Base::Wx::Image>
+
 L<Image::Base::X11::Protocol::Drawable>,
 L<Image::Base::X11::Protocol::Pixmap>,
 L<Image::Base::X11::Protocol::Window>
@@ -797,7 +840,7 @@ please include the word 'imagebase' in the subject line.
 
 Copyright (c) Mark Summerfield 2000. All Rights Reserved.
 
-Copyright (c) Kevin Ryde 2010, 2011.
+Copyright (c) Kevin Ryde 2010, 2011, 2012.
 
 This module may be used/distributed/modified under the LGPL. 
 

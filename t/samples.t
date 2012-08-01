@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# Copyright 2010, 2011 Kevin Ryde
+# Copyright 2010, 2011, 2012 Kevin Ryde
 
 # This file is part of Image-Base.
 #
@@ -20,7 +20,7 @@
 use strict;
 use Test;
 BEGIN {
-  plan tests => 98;
+  plan tests => 56;
 }
 
 # whether to mark repeat-drawn pixels as "X" (repeat drawn pixels being
@@ -405,19 +405,13 @@ HERE
 +--------------------+
 HERE
                  ) {
-  foreach my $swap_x (0, 1) {
-    foreach my $swap_y (0, 1) {
-
-      my ($x0,$y0, $x1,$y1, $fill, $want) = @$elem;
-      if ($swap_x) { ($x0,$x1) = ($x1,$x0) }
-      if ($swap_y) { ($y0,$y1) = ($y1,$y0) }
-
-      my $image = MyGrid->new (-width => 20, -height => 10);
-      $image->rectangle ($x0,$y0, $x1,$y1, '*', $fill);
-      my $got = $image->{'str'};
-      ok ("\n$got", "\n$want", "rectangle $x0,$y0, $x1,$y1, fill=$fill");
-    }
-  }
+  my ($x0,$y0, $x1,$y1, $fill, $want) = @$elem;
+  
+  my $image = MyGrid->new (-width => 20, -height => 10);
+  $image->rectangle ($x0,$y0, $x1,$y1, '*', $fill);
+  my $got = $image->{'str'};
+  ok ("\n$got", "\n$want",
+      "rectangle $x0,$y0, $x1,$y1, fill=$fill");
 }
 
 

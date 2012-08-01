@@ -1,15 +1,17 @@
 Changes
-lib/Image/Base.pm
-t/base.t
-t/misc.t
-t/samples.t
-MANIFEST
-Makefile.PL
-README
-LGPL-3
 devel/ellipse.pl
 devel/misc.pl
 devel/overflow.pl
 devel/symmetry.pl
+GPL-3
+LGPL-3
+lib/Image/Base.pm
+Makefile.PL
+MANIFEST			This list of files
+MANIFEST.SKIP
+README
+SIGNATURE
+t/base.t
+t/misc.t
+t/samples.t
 META.yml                                 Module meta-data (added by MakeMaker)
-SIGNATURE                                Public-key signature (added by MakeMaker)

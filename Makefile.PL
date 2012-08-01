@@ -1,6 +1,8 @@
+#!/usr/bin/perl -w
+
 # Copyright (c) Mark Summerfield 2000. All Rights Reserved.
 # 
-# Copyright (c) Kevin Ryde 2010, 2011.
+# Copyright (c) Kevin Ryde 2010, 2011, 2012.
 # 
 # This file may be used/distributed/modified under the LGPL. 
 
